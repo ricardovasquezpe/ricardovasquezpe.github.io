@@ -36,13 +36,13 @@ if (track) {
   const controls = carousel.querySelector('.carousel-controls');
   const pause = controls.querySelector('.carousel-pause');
   const reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)');
-  let moving = false;
-  let activeAnimation = null;
-  let automaticAnimation = false;
   let paused = reducedMotion.matches;
-  let hovered = false;
+  let pointerId = null;
+  let pointerX = 0;
+  let offset = 0;
+  let frame = null;
+  let previousTime = null;
   let timer;
-  let touchX = null;
   slides.forEach((slide, index) => {
     slide.setAttribute('data-moment', String(index + 1));
     slide.setAttribute('role', 'group');
@@ -54,79 +54,95 @@ if (track) {
     pause.setAttribute('aria-pressed', String(paused));
     pause.setAttribute('aria-label', paused ? 'Start automatic slideshow' : 'Pause automatic slideshow');
   }
-  function schedule() {
-    clearTimeout(timer);
-    // Mouse clicks can leave focus inside after the pointer has moved away.
-    // Only keyboard focus should keep playback paused independently of hover.
+  function stepWidth() {
+    return track.children[1].getBoundingClientRect().left - track.children[0].getBoundingClientRect().left;
+  }
+  function render() {
+    const step = stepWidth();
+    if (step <= 0) return;
+    // Rotate the cards as they leave either edge, preserving the drag position.
+    while (offset <= -step) {
+      track.append(track.firstElementChild);
+      offset += step;
+    }
+    while (offset > 0) {
+      track.prepend(track.lastElementChild);
+      offset -= step;
+    }
+    track.style.transform = `translateX(${offset}px)`;
+  }
+  function suspended() {
     const focused = document.activeElement;
     const keyboardFocus = focused && carousel.contains(focused) && focused.matches(':focus-visible');
-    const suspended = paused || hovered || document.hidden || keyboardFocus;
-    if (activeAnimation && automaticAnimation) {
-      if (suspended) activeAnimation.pause();
-      else activeAnimation.play();
-    }
-    if (!suspended && !moving) {
-      if (reducedMotion.matches) timer = setTimeout(() => advance(1, true), 6000);
-      else advance(1, true);
-    }
+    return paused || pointerId !== null || document.hidden || keyboardFocus;
   }
-  function advance(direction, automatic = false) {
-    if (moving || slides.length < 2) return;
-    moving = true;
-    const children = track.children;
-    const step = children[1].getBoundingClientRect().left - children[0].getBoundingClientRect().left;
-    const start = direction > 0 ? 0 : -step;
-    const end = direction > 0 ? -step : 0;
-    // Keep a fourth card ready outside the viewport during either direction.
-    const incoming = (direction > 0 ? track.firstElementChild : track.lastElementChild).cloneNode(true);
-    incoming.setAttribute('aria-hidden', 'true');
-    incoming.inert = true;
-    incoming.removeAttribute('id');
-    incoming.querySelectorAll('[id]').forEach(node => node.removeAttribute('id'));
-    if (direction > 0) track.append(incoming);
-    else track.prepend(incoming);
-    function finish() {
-      incoming.remove();
-      if (direction > 0) track.append(track.firstElementChild);
-      else track.prepend(track.lastElementChild);
-      track.style.transform = 'translateX(0)';
-      if (activeAnimation) activeAnimation.cancel();
-      activeAnimation = null;
-      moving = false;
-      updateControls();
-      schedule();
+  function tick(time) {
+    frame = null;
+    if (suspended()) return;
+    if (previousTime !== null) {
+      offset -= stepWidth() * Math.min(time - previousTime, 100) / 6500;
+      render();
     }
+    previousTime = time;
+    frame = requestAnimationFrame(tick);
+  }
+  function schedule() {
+    clearTimeout(timer);
+    if (frame !== null) cancelAnimationFrame(frame);
+    frame = null;
+    previousTime = null;
+    if (suspended() || slides.length < 2) return;
     if (reducedMotion.matches) {
-      finish();
+      timer = setTimeout(() => { manualAdvance(1); schedule(); }, 6000);
     } else {
-      automaticAnimation = automatic;
-      activeAnimation = track.animate(
-        [{ transform: `translateX(${start}px)` }, { transform: `translateX(${end}px)` }],
-        { duration: automatic ? 6500 : 700, easing: automatic ? 'linear' : 'ease-out', fill: 'forwards' }
-      );
-      activeAnimation.onfinish = finish;
+      frame = requestAnimationFrame(tick);
     }
   }
-  function manualAdvance(direction) { advance(direction); schedule(); }
+  function manualAdvance(direction) {
+    if (slides.length < 2) return;
+    offset -= direction * stepWidth();
+    render();
+  }
   pause.addEventListener('click', () => { paused = !paused; updateControls(); schedule(); });
   track.addEventListener('keydown', event => {
     if (event.key === 'ArrowRight' || event.key === 'ArrowLeft') {
       event.preventDefault();
       manualAdvance(event.key === 'ArrowRight' ? 1 : -1);
+      schedule();
     }
   });
-  track.addEventListener('touchstart', event => { touchX = event.touches[0].clientX; clearTimeout(timer); }, { passive: true });
-  track.addEventListener('touchend', event => {
-    if (touchX !== null) {
-      const distance = touchX - event.changedTouches[0].clientX;
-      if (Math.abs(distance) > 40) advance(distance > 0 ? 1 : -1);
-    }
-    touchX = null;
+  track.addEventListener('dragstart', event => event.preventDefault());
+  track.addEventListener('pointerdown', event => {
+    if (!event.isPrimary || event.button !== 0 || slides.length < 2) return;
+    pointerId = event.pointerId;
+    pointerX = event.clientX;
+    track.classList.add('is-dragging');
+    track.setPointerCapture(pointerId);
+    // Avoid selecting text and native image dragging with a mouse.
+    if (event.pointerType === 'mouse') event.preventDefault();
     schedule();
-  }, { passive: true });
-  track.addEventListener('touchcancel', () => { touchX = null; schedule(); }, { passive: true });
-  carousel.addEventListener('mouseenter', () => { hovered = true; schedule(); });
-  carousel.addEventListener('mouseleave', () => { hovered = false; schedule(); });
+  });
+  track.addEventListener('pointermove', event => {
+    if (event.pointerId !== pointerId) return;
+    offset += event.clientX - pointerX;
+    pointerX = event.clientX;
+    render();
+  });
+  function endDrag(event) {
+    if (event.pointerId !== pointerId) return;
+    const capturedPointer = pointerId;
+    pointerId = null;
+    track.classList.remove('is-dragging');
+    if (track.hasPointerCapture(capturedPointer)) track.releasePointerCapture(capturedPointer);
+    schedule();
+  }
+  track.addEventListener('pointerup', endDrag);
+  track.addEventListener('pointercancel', endDrag);
+  track.addEventListener('lostpointercapture', endDrag);
+  window.addEventListener('blur', () => {
+    if (pointerId !== null) endDrag({ pointerId });
+  });
+  window.addEventListener('resize', render);
   carousel.addEventListener('focusin', schedule);
   carousel.addEventListener('focusout', () => setTimeout(schedule, 0));
   document.addEventListener('visibilitychange', schedule);

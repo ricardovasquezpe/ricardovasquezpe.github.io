@@ -33,3 +33,14 @@
 .project-team-photo .pagao-photo{object-position:50% 70%}
 
 .carousel-controls{justify-content:flex-end}
+
+.carousel-track{cursor:grab;user-select:none;-webkit-user-select:none;touch-action:pan-y}
+.carousel-track.is-dragging{cursor:grabbing}
+.carousel-track img{-webkit-user-drag:none}
+
+/* Additional experience uses the full section width beneath the introduction. */
+#experience .experience-grid{row-gap:28px}
+.experience-more{grid-column:1/-1}
+.expanded-experience{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:28px 48px}
+.expanded-experience .experience-entry{padding-bottom:0}
+@media(max-width:760px){.expanded-experience{grid-template-columns:1fr;gap:24px}}
