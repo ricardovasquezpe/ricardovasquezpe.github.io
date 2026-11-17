@@ -24,3 +24,12 @@
 .carousel-track figcaption{font-size:10px}
 .carousel-buttons .carousel-pause{width:auto;padding:0 14px;font-size:12px}
 @media(max-width:760px){.carousel-track>.photo-slot{flex-basis:100%}.carousel-track .photo-placeholder{min-height:235px}.carousel-track .photo-placeholder>span:last-child{font-size:24px}#beyond .section-heading{flex-wrap:wrap}}
+
+.country-flags{display:flex;flex-wrap:wrap;gap:2px 4px;margin:6px 0 8px;max-width:100%}.country-flags span{font-size:20px;line-height:1.2}
+
+/* Real photographs keep their full composition in the gallery. */
+.gallery-photo{display:block;width:100%;height:auto;aspect-ratio:4/3;object-fit:contain;background:var(--soft)}
+.experience-photo{display:block;width:100%;height:auto;background:var(--soft)}
+.project-team-photo .pagao-photo{object-position:50% 70%}
+
+.carousel-controls{justify-content:flex-end}

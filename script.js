@@ -34,12 +34,8 @@ if (track) {
   const carousel = track.closest('.carousel');
   const slides = Array.from(track.children);
   const controls = carousel.querySelector('.carousel-controls');
-  const previous = controls.querySelector('.carousel-prev');
-  const next = controls.querySelector('.carousel-next');
   const pause = controls.querySelector('.carousel-pause');
-  const position = controls.querySelector('.carousel-position');
   const reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)');
-  let current = 0;
   let moving = false;
   let activeAnimation = null;
   let automaticAnimation = false;
@@ -54,7 +50,6 @@ if (track) {
     slide.setAttribute('aria-label', `${index + 1} of ${slides.length}`);
   });
   function updateControls() {
-    position.textContent = `${String(current + 1).padStart(2, '0')} / ${String(slides.length).padStart(2, '0')}`;
     pause.textContent = paused ? 'Play' : 'Pause';
     pause.setAttribute('aria-pressed', String(paused));
     pause.setAttribute('aria-label', paused ? 'Start automatic slideshow' : 'Pause automatic slideshow');
@@ -97,7 +92,6 @@ if (track) {
       track.style.transform = 'translateX(0)';
       if (activeAnimation) activeAnimation.cancel();
       activeAnimation = null;
-      current = (current + direction + slides.length) % slides.length;
       moving = false;
       updateControls();
       schedule();
@@ -114,8 +108,6 @@ if (track) {
     }
   }
   function manualAdvance(direction) { advance(direction); schedule(); }
-  previous.addEventListener('click', () => manualAdvance(-1));
-  next.addEventListener('click', () => manualAdvance(1));
   pause.addEventListener('click', () => { paused = !paused; updateControls(); schedule(); });
   track.addEventListener('keydown', event => {
     if (event.key === 'ArrowRight' || event.key === 'ArrowLeft') {
