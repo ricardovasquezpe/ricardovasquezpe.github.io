@@ -30,7 +30,7 @@
 /* Real photographs keep their full composition in the gallery. */
 .gallery-photo{display:block;width:100%;height:auto;aspect-ratio:4/3;object-fit:contain;background:var(--soft)}
 .experience-photo{display:block;width:100%;height:auto;background:var(--soft)}
-.project-team-photo .pagao-photo{object-position:50% 70%}
+.project-app-image img{object-fit:contain;background:#fff}
 
 .carousel-controls{justify-content:flex-end}
 
@@ -44,3 +44,22 @@
 .expanded-experience{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:28px 48px}
 .expanded-experience .experience-entry{padding-bottom:0}
 @media(max-width:760px){.expanded-experience{grid-template-columns:1fr;gap:24px}}
+
+.intro-heading {
+    display: flex;
+    align-items: center;
+    gap: clamp(12px, 2vw, 24px);
+    margin: 24px 0 26px;
+}
+
+.intro .intro-heading h1 {
+    margin: 0;
+}
+
+.intro-portrait {
+    width: clamp(64px, 9vw, 104px);
+    height: auto;
+    flex-shrink: 0;
+    border: 1px solid var(--line);
+    border-radius: 50%;
+}
